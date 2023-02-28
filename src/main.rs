@@ -6,6 +6,7 @@ use std::{cell::RefCell, ops::Deref, rc::Rc};
 
 use native_windows_gui as nwg;
 use nwg::NativeUi;
+use ssh_config_parser::SshConfig;
 
 mod ssh_config_parser;
 
@@ -13,7 +14,7 @@ fn main() {
 	nwg::init().expect("Failed to init Native Windows GUI");
 	nwg::Font::set_global_family("Segoe UI").expect("Failed to set default font");
 	let _ui = App::build_ui(App {
-		sessions_list: load_ssh_config_file().expect("Failed to load config file"),
+		ssh_config: load_ssh_config_file().expect("Failed to load config file"),
 		..Default::default()
 	});
 	nwg::dispatch_thread_events();
@@ -27,7 +28,7 @@ pub struct App {
 	ip_input: nwg::TextInput,
 	ok_button: nwg::Button,
 
-	sessions_list: Vec<String>,
+	ssh_config: SshConfig,
 }
 
 impl App {
@@ -37,8 +38,8 @@ impl App {
 
 	fn paste_from_clipboard(&self) {
 		let Some(text) = nwg::Clipboard::data_text(&self.window) else {
-            return;
-        };
+			return;
+		};
 		self.sessions_list_box.set_selection(None);
 		self.ip_input.set_text(&text);
 	}
@@ -61,11 +62,11 @@ impl App {
 
 	fn open_selected(&self) {
 		let Some(selected_index) = self.sessions_list_box.selection() else {
-            self.quit();
-            return;
-        };
-		let item = &self.sessions_list[selected_index];
-		println!("Selected index {selected_index}: {item}");
+			self.quit();
+			return;
+		};
+		let item = &self.ssh_config.hosts[selected_index];
+		println!("Selected index {selected_index}: {item:#?}");
 
 		self.quit();
 	}
@@ -107,7 +108,13 @@ impl nwg::NativeUi<AppUi> for App {
 			.size((180, 180))
 			.position((10, 40))
 			.focus(true)
-			.collection(data.sessions_list.clone())
+			.collection(
+				data.ssh_config
+					.hosts
+					.iter()
+					.map(|host| host.name.clone())
+					.collect(),
+			)
 			.parent(&mut data.window)
 			.build(&mut data.sessions_list_box)?;
 
@@ -135,9 +142,9 @@ impl nwg::NativeUi<AppUi> for App {
 		let app = Rc::downgrade(&ui.inner);
 		let event_handler = move |event, event_data, handle| {
 			let Some(app) = app.upgrade() else {
-                eprintln!("ERRO: Tried to handle event for deallocated App");
-                return;
-            };
+				eprintln!("ERRO: Tried to handle event for deallocated App");
+				return;
+			};
 
 			match event_data {
 				Data::OnKey(nwg::keys::ESCAPE) => {
@@ -178,8 +185,8 @@ impl nwg::NativeUi<AppUi> for App {
 impl Drop for AppUi {
 	fn drop(&mut self) {
 		let Some(ref handler) = *self.default_handler.borrow_mut() else {
-            return;
-        };
+			return;
+		};
 		nwg::unbind_event_handler(handler);
 	}
 }
@@ -192,11 +199,10 @@ impl Deref for AppUi {
 	}
 }
 
-fn load_ssh_config_file() -> Result<Vec<String>, Box<dyn std::error::Error>> {
+fn load_ssh_config_file() -> Result<SshConfig, Box<dyn std::error::Error>> {
 	let ssh_config = std::fs::read_to_string(home_dir()?.join(".ssh").join("config"))?;
-	let config = ssh_config_parser::parse()?;
-
-	Ok(vec![])
+	let config = ssh_config_parser::parse(&ssh_config)?;
+	Ok(config)
 }
 
 fn home_dir() -> io::Result<PathBuf> {

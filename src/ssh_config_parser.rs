@@ -3,16 +3,18 @@ use std::collections::HashMap;
 use nom::bytes::complete::tag;
 use nom::combinator::all_consuming;
 
-struct SshConfig {
-	hosts: Vec<Host>,
+#[derive(Default, Debug)]
+pub struct SshConfig {
+	pub hosts: Vec<Host>,
 }
 
-struct Host {
-	name: String,
+#[derive(Default, Debug)]
+pub struct Host {
+	pub name: String,
 
-	host_name: String,
-	user: String,
-	other: HashMap<String, String>,
+	pub host_name: String,
+	pub user: String,
+	pub other: HashMap<String, String>,
 }
 
 pub fn parse(input: &str) -> Result<SshConfig, nom::Err<nom::error::Error<String>>> {
