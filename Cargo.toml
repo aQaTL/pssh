@@ -5,6 +5,10 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[profile.release]
+lto = "fat"
+strip = true
+
 [dependencies]
 native-windows-gui = { version = "1.0.13", default-features = false, features = ["clipboard", "listbox"] }
 winapi = { version = "0.3", features = ["userenv"] }

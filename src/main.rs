@@ -7,6 +7,8 @@ use std::{cell::RefCell, ops::Deref, rc::Rc};
 use native_windows_gui as nwg;
 use nwg::NativeUi;
 
+mod ssh_config_parser;
+
 fn main() {
 	nwg::init().expect("Failed to init Native Windows GUI");
 	nwg::Font::set_global_family("Segoe UI").expect("Failed to set default font");
@@ -192,7 +194,7 @@ impl Deref for AppUi {
 
 fn load_ssh_config_file() -> Result<Vec<String>, Box<dyn std::error::Error>> {
 	let ssh_config = std::fs::read_to_string(home_dir()?.join(".ssh").join("config"))?;
-	println!("ssh config: {ssh_config}");
+	let config = ssh_config_parser::parse()?;
 
 	Ok(vec![])
 }
