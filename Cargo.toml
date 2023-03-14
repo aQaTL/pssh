@@ -11,5 +11,5 @@ strip = true
 
 [dependencies]
 native-windows-gui = { version = "1.0.13", default-features = false, features = ["clipboard", "listbox"] }
-winapi = { version = "0.3", features = ["userenv"] }
+winapi = { version = "0.3", features = ["userenv", "winuser"] }
 nom = "7.1"

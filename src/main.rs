@@ -22,6 +22,33 @@ fn main() {
 	nwg::dispatch_thread_events();
 }
 
+fn open_ssh_session(name: &str) {
+	use winapi::um::winuser::{MessageBoxW, MB_ICONERROR};
+
+	let result = std::process::Command::new("cmd.exe")
+		.arg("/c")
+		.arg(format!("ssh {name}"))
+		.spawn();
+
+	if let Err(err) = result {
+		unsafe {
+			MessageBoxW(
+				std::ptr::null_mut(),
+				err.to_string()
+					.encode_utf16()
+					.chain("\0".encode_utf16())
+					.collect::<Vec<_>>()
+					.as_ptr(),
+				"Failed to start ssh\0"
+					.encode_utf16()
+					.collect::<Vec<_>>()
+					.as_ptr(),
+				MB_ICONERROR,
+			);
+		}
+	}
+}
+
 #[derive(Default)]
 pub struct App {
 	window: nwg::Window,
@@ -70,12 +97,16 @@ impl App {
 		let item = &self.ssh_config.hosts[selected_index];
 		println!("Selected index {selected_index}: {item:#?}");
 
+		open_ssh_session(&item.name);
+
 		self.quit();
 	}
 
 	fn open_from_custom_ip_input(&self) {
 		let ip = self.ip_input.text();
 		println!("Opening from custom ip input: {ip}");
+
+		open_ssh_session(&ip);
 
 		self.quit();
 	}
