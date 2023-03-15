@@ -1,0 +1,2 @@
+- [x] Config file
+	- [x] Command to use to execute ssh 

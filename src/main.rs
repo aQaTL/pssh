@@ -8,25 +8,33 @@ use std::{cell::RefCell, ops::Deref, rc::Rc};
 
 use native_windows_gui as nwg;
 use nwg::NativeUi;
+
+use config::Config;
 use ssh_config_parser::SshConfig;
 
+mod config;
 mod ssh_config_parser;
 
 fn main() {
 	nwg::init().expect("Failed to init Native Windows GUI");
 	nwg::Font::set_global_family("Segoe UI").expect("Failed to set default font");
+
+	let config = Config::load();
+	println!("Loaded config: {config:#?}");
+
 	let _ui = App::build_ui(App {
+		config,
 		ssh_config: load_ssh_config_file().expect("Failed to load config file"),
 		..Default::default()
 	});
 	nwg::dispatch_thread_events();
 }
 
-fn open_ssh_session(name: &str) {
+fn open_ssh_session(config: &Config, name: &str) {
 	use winapi::um::winuser::{MessageBoxW, MB_ICONERROR};
 
-	let result = std::process::Command::new("cmd.exe")
-		.arg("/c")
+	let result = std::process::Command::new(&config.launcher_cmd[0])
+		.args(&config.launcher_cmd[1..])
 		.arg(format!("ssh {name}"))
 		.spawn();
 
@@ -57,6 +65,7 @@ pub struct App {
 	ip_input: nwg::TextInput,
 	ok_button: nwg::Button,
 
+	config: Config,
 	ssh_config: SshConfig,
 }
 
@@ -97,7 +106,7 @@ impl App {
 		let item = &self.ssh_config.hosts[selected_index];
 		println!("Selected index {selected_index}: {item:#?}");
 
-		open_ssh_session(&item.name);
+		open_ssh_session(&self.config, &item.name);
 
 		self.quit();
 	}
@@ -106,7 +115,7 @@ impl App {
 		let ip = self.ip_input.text();
 		println!("Opening from custom ip input: {ip}");
 
-		open_ssh_session(&ip);
+		open_ssh_session(&self.config, &ip);
 
 		self.quit();
 	}
@@ -264,4 +273,35 @@ fn home_dir() -> io::Result<PathBuf> {
 
 	let path: PathBuf = OsString::from_wide(&path[..(path_size as usize - 1)]).into();
 	Ok(path)
+}
+
+pub fn local_app_data() -> io::Result<PathBuf> {
+	use winapi::um::{
+		combaseapi::CoTaskMemFree, knownfolders::FOLDERID_LocalAppData,
+		shlobj::SHGetKnownFolderPath,
+	};
+
+	let mut path_ptr: *mut u16 = std::ptr::null_mut();
+	let ret = unsafe {
+		SHGetKnownFolderPath(
+			&FOLDERID_LocalAppData as *const _,
+			0,
+			std::ptr::null_mut(),
+			&mut path_ptr as *mut *mut u16,
+		)
+	};
+	if ret != 0 {
+		return Err(io::Error::last_os_error());
+	}
+
+	let path_len = (0_usize..)
+		.find(|offset| unsafe { *path_ptr.add(*offset) } == 0)
+		.unwrap();
+	let path: &[u16] = unsafe { std::slice::from_raw_parts_mut(path_ptr, path_len) };
+	let path = OsString::from_wide(path);
+
+	// Free the data allocated by Windows in SHGetKnownFolderPath
+	unsafe { CoTaskMemFree(path_ptr.cast::<winapi::ctypes::c_void>()) }
+
+	Ok(PathBuf::from(path))
 }
