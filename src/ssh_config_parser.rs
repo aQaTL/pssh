@@ -18,10 +18,8 @@ pub struct SshConfig {
 pub struct Host {
 	pub name: String,
 
-	// TODO(aqatl): This should probably be optional
-	pub host_name: String,
-	// TODO(aqatl): This should probably be optional
-	pub user: String,
+	pub host_name: Option<String>,
+	pub user: Option<String>,
 	pub other: HashMap<String, String>,
 }
 
@@ -119,8 +117,8 @@ fn parse_host(input: &str) -> IResult<&str, Host> {
 		rest,
 		Host {
 			name: name.to_string(),
-			host_name: host_name.unwrap_or_default(),
-			user: user.unwrap_or_default(),
+			host_name,
+			user,
 			other,
 		},
 	))
@@ -189,8 +187,8 @@ mod tests {
 
 		let expected = Host {
 			name: "example_host".to_string(),
-			host_name: "example.com".to_string(),
-			user: "example_user".to_string(),
+			host_name: "example.com".to_string().into(),
+			user: "example_user".to_string().into(),
 			other: HashMap::new(),
 		};
 
@@ -211,8 +209,8 @@ Host foo
 		let expected = SshConfig {
 			hosts: vec![Host {
 				name: "foo".to_string(),
-				host_name: "example.com".to_string(),
-				user: "exampler".to_string(),
+				host_name: "example.com".to_string().into(),
+				user: "exampler".to_string().into(),
 				other: HashMap::new(),
 			}],
 			global_options: HashMap::new(),
@@ -257,8 +255,8 @@ Host foo
 		let expected = SshConfig {
 			hosts: vec![Host {
 				name: "foo".to_string(),
-				host_name: "bar".to_string(),
-				user: "foobar".to_string(),
+				host_name: "bar".to_string().into(),
+				user: "foobar".to_string().into(),
 				..Default::default()
 			}],
 			..Default::default()
@@ -288,14 +286,14 @@ Host subexample
 			hosts: vec![
 				Host {
 					name: "example_host".to_string(),
-					host_name: "example.com".to_string(),
-					user: "example_user".to_string(),
+					host_name: "example.com".to_string().into(),
+					user: "example_user".to_string().into(),
 					other: HashMap::new(),
 				},
 				Host {
 					name: "subexample".to_string(),
-					host_name: "198.0.90.242".to_string(),
-					user: "bob".to_string(),
+					host_name: "198.0.90.242".to_string().into(),
+					user: "bob".to_string().into(),
 					other: [
 						("Port".to_string(), "9082".to_string()),
 						(
