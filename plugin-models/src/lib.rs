@@ -1,5 +1,7 @@
 #![no_std]
 
+use core::ffi::c_void;
+
 pub enum SshConfig {}
 
 #[derive(Clone)]
@@ -13,3 +15,11 @@ pub struct Host {
 }
 
 pub enum OptionsMap {}
+
+pub enum List {}
+
+#[repr(C)]
+pub struct ListEntry {
+	pub data: *const c_void,
+	pub len: usize,
+}

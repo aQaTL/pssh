@@ -1,4 +1,4 @@
-use std::{os::windows::prelude::OsStrExt, path::Path};
+use std::{ffi::CString, os::windows::prelude::OsStrExt, path::Path};
 
 use crate::{config::Config, message_box_error, ssh_config_parser};
 
@@ -27,9 +27,13 @@ use winapi::shared::minwindef::HMODULE;
 pub struct Plugin {
 	handle: HMODULE,
 	inspect_config_fn: InspectConfigFn,
+	ssh_args_fn: SshArgsFn,
 }
 
 type InspectConfigFn = extern "C" fn(list: *mut plugin_sdk::SshConfig);
+type SshArgsFn = extern "C" fn(
+	host: *const plugin_sdk::plugin_models::Host,
+) -> *mut plugin_sdk::plugin_models::List;
 
 impl Drop for Plugin {
 	fn drop(&mut self) {
@@ -44,6 +48,7 @@ impl Drop for Plugin {
 pub enum LoadError {
 	OsError(std::io::Error),
 	LoadInspectConfigFn(std::io::Error),
+	LoadSshArgsFn(std::io::Error),
 }
 
 impl Plugin {
@@ -72,9 +77,16 @@ impl Plugin {
 		}
 		let inspect_config_fn: InspectConfigFn = unsafe { std::mem::transmute(inspect_config_fn) };
 
+		let ssh_args_fn = unsafe { GetProcAddress(handle, b"ssh_args\0".as_ptr().cast::<i8>()) };
+		if ssh_args_fn.is_null() {
+			return Err(LoadError::LoadSshArgsFn(std::io::Error::last_os_error()));
+		}
+		let ssh_args_fn: SshArgsFn = unsafe { std::mem::transmute(ssh_args_fn) };
+
 		Ok(Plugin {
 			handle,
 			inspect_config_fn,
+			ssh_args_fn,
 		})
 	}
 
@@ -82,5 +94,46 @@ impl Plugin {
 		let ssh_config: *mut ssh_config_parser::SshConfig = ssh_config;
 		let ssh_config: *mut plugin_sdk::SshConfig = ssh_config.cast();
 		(self.inspect_config_fn)(ssh_config);
+	}
+
+	pub fn call_ssh_args(&self, host: &ssh_config_parser::Host) -> Option<Vec<String>> {
+		let name = format!("{}\0", host.name);
+		let host_name = host
+			.host_name
+			.as_ref()
+			.map(|host_name| format!("{}\0", host_name));
+		let user = host.user.as_ref().map(|user| format!("{}\0", user));
+		let host = plugin_sdk::plugin_models::Host {
+			name: name.as_ptr().cast(),
+			host_name: host_name
+				.as_ref()
+				.map(|x| x.as_ptr())
+				.unwrap_or(std::ptr::null())
+				.cast(),
+			user: user
+				.as_ref()
+				.map(|x| x.as_ptr())
+				.unwrap_or(std::ptr::null())
+				.cast(),
+			other: ((&host.other) as *const std::collections::HashMap<_, _>)
+				.cast::<plugin_sdk::plugin_models::OptionsMap>(),
+		};
+		let list = (self.ssh_args_fn)(&host);
+		if list.is_null() {
+			return None;
+		}
+		let list = unsafe { Box::from_raw(list.cast::<plugin_sdk::List>()) };
+		Some(
+			list.v
+				.into_iter()
+				.map(|bytes| {
+					CString::from_vec_with_nul(bytes)
+						.unwrap()
+						.to_str()
+						.unwrap()
+						.to_string()
+				})
+				.collect(),
+		)
 	}
 }

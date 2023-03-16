@@ -10,7 +10,8 @@ use native_windows_gui as nwg;
 use nwg::NativeUi;
 
 use config::Config;
-use ssh_config_parser::SshConfig;
+use plugins::Plugin;
+use ssh_config_parser::{Host, SshConfig};
 
 mod config;
 mod plugins;
@@ -34,15 +35,31 @@ fn main() {
 	let _ui = App::build_ui(App {
 		config,
 		ssh_config,
+		plugins,
 		..Default::default()
 	});
 	nwg::dispatch_thread_events();
 }
 
-fn open_ssh_session(config: &Config, name: &str) {
+//TODO(aqatl): pass [Host], not just a name here
+fn open_ssh_session(config: &Config, plugins: &[Plugin], hosts: &[Host], name: &str) {
+	let mut custom_args = String::from("");
+	let host = hosts.iter().find(|h| h.name == name).unwrap();
+	for plugin in plugins {
+		if let Some(args) = plugin.call_ssh_args(host) {
+			let args = args.join(" ");
+			custom_args = format!(" {args}");
+		}
+	}
+
+	let ssh_command = format!("ssh {name}{custom_args}");
+	if cfg!(debug_assertions) {
+		println!("ssh command: {ssh_command}");
+	}
+
 	let result = std::process::Command::new(&config.launcher_cmd[0])
 		.args(&config.launcher_cmd[1..])
-		.arg(format!("ssh {name}"))
+		.arg(ssh_command)
 		.spawn();
 
 	if let Err(err) = result {
@@ -60,6 +77,8 @@ pub struct App {
 
 	config: Config,
 	ssh_config: SshConfig,
+
+	plugins: Vec<Plugin>,
 }
 
 impl App {
@@ -99,7 +118,12 @@ impl App {
 		let item = &self.ssh_config.hosts[selected_index];
 		println!("Selected index {selected_index}: {item:#?}");
 
-		open_ssh_session(&self.config, &item.name);
+		open_ssh_session(
+			&self.config,
+			&self.plugins,
+			&self.ssh_config.hosts,
+			&item.name,
+		);
 
 		self.quit();
 	}
@@ -108,7 +132,7 @@ impl App {
 		let ip = self.ip_input.text();
 		println!("Opening from custom ip input: {ip}");
 
-		open_ssh_session(&self.config, &ip);
+		open_ssh_session(&self.config, &self.plugins, &self.ssh_config.hosts, &ip);
 
 		self.quit();
 	}

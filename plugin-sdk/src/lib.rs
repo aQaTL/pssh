@@ -1,5 +1,7 @@
 use std::{collections::HashMap, ffi::CStr};
 
+pub use plugin_models;
+
 #[derive(Default, Debug, PartialEq, Eq)]
 pub struct SshConfig {
 	pub global_options: HashMap<String, String>,
@@ -57,4 +59,27 @@ extern "C" fn create_settings_list() -> *mut plugin_models::OptionsMap {
 #[no_mangle]
 unsafe extern "C" fn free_settings_list(options_map: *mut plugin_models::OptionsMap) {
 	let _ = Box::from_raw(options_map.cast::<OptionsMap>());
+}
+
+#[derive(Default)]
+pub struct List {
+	pub v: Vec<Vec<u8>>,
+}
+
+#[no_mangle]
+extern "C" fn list_create() -> *mut plugin_models::List {
+	Box::into_raw(Box::new(List::default())).cast()
+}
+
+#[no_mangle]
+unsafe extern "C" fn list_free(l: *mut plugin_models::List) {
+	let _ = Box::from_raw(l.cast::<List>());
+}
+
+#[no_mangle]
+unsafe extern "C" fn list_push(l: *mut plugin_models::List, entry: plugin_models::ListEntry) {
+	let mut v = Vec::with_capacity(entry.len);
+	std::ptr::copy_nonoverlapping(entry.data.cast::<u8>(), v.as_mut_ptr(), entry.len);
+	v.set_len(entry.len);
+	(*(l.cast::<List>())).v.push(v);
 }
