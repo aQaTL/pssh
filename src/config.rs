@@ -2,8 +2,10 @@ use serde::Deserialize;
 use std::{io, path::PathBuf};
 
 #[derive(Debug, Deserialize)]
+#[serde(default)]
 pub struct Config {
 	pub launcher_cmd: Vec<String>,
+	pub plugins: Vec<String>,
 }
 
 impl Default for Config {
@@ -13,6 +15,7 @@ impl Default for Config {
 				.into_iter()
 				.map(ToString::to_string)
 				.collect(),
+			plugins: Vec::new(),
 		}
 	}
 }

@@ -71,6 +71,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "plugin-models"
+version = "0.1.0"
+
+[[package]]
+name = "plugin-sdk"
+version = "0.1.0"
+dependencies = [
+ "plugin-models",
+]
+
+[[package]]
 name = "proc-macro2"
 version = "1.0.52"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -85,6 +96,7 @@ version = "0.1.0"
 dependencies = [
  "native-windows-gui",
  "nom",
+ "plugin-sdk",
  "serde",
  "toml",
  "winapi",

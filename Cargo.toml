@@ -11,7 +11,20 @@ strip = true
 
 [dependencies]
 native-windows-gui = { version = "1.0.13", default-features = false, features = ["clipboard", "listbox"] }
-winapi = { version = "0.3", features = ["userenv", "winuser", "shlobj", "knownfolders", "combaseapi"] }
 nom = "7.1"
 toml = "0.7.3"
 serde = { version = "1.0.156", features = ["derive"] }
+
+[dependencies.winapi]
+version = "0.3"
+features = [
+	"userenv",
+	"winuser",
+	"shlobj",
+	"knownfolders",
+	"combaseapi",
+	"libloaderapi",
+]
+
+[dependencies.plugin-sdk]
+path = "plugin-sdk"

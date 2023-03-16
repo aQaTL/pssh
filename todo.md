@@ -1,2 +1,5 @@
 - [x] Config file
 	- [x] Command to use to execute ssh 
+- [x] Plugins
+	- [x] Being able to add additional entries
+	- [ ] Being able to do custom action on entry select

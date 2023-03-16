@@ -13,6 +13,7 @@ use config::Config;
 use ssh_config_parser::SshConfig;
 
 mod config;
+mod plugins;
 mod ssh_config_parser;
 
 fn main() {
@@ -22,38 +23,30 @@ fn main() {
 	let config = Config::load();
 	println!("Loaded config: {config:#?}");
 
+	let plugins = plugins::load_plugins(&config);
+
+	let mut ssh_config = load_ssh_config_file().expect("Failed to load config file");
+
+	plugins
+		.iter()
+		.for_each(|plugin| plugin.call_inspect_config(&mut ssh_config));
+
 	let _ui = App::build_ui(App {
 		config,
-		ssh_config: load_ssh_config_file().expect("Failed to load config file"),
+		ssh_config,
 		..Default::default()
 	});
 	nwg::dispatch_thread_events();
 }
 
 fn open_ssh_session(config: &Config, name: &str) {
-	use winapi::um::winuser::{MessageBoxW, MB_ICONERROR};
-
 	let result = std::process::Command::new(&config.launcher_cmd[0])
 		.args(&config.launcher_cmd[1..])
 		.arg(format!("ssh {name}"))
 		.spawn();
 
 	if let Err(err) = result {
-		unsafe {
-			MessageBoxW(
-				std::ptr::null_mut(),
-				err.to_string()
-					.encode_utf16()
-					.chain("\0".encode_utf16())
-					.collect::<Vec<_>>()
-					.as_ptr(),
-				"Failed to start ssh\0"
-					.encode_utf16()
-					.collect::<Vec<_>>()
-					.as_ptr(),
-				MB_ICONERROR,
-			);
-		}
+		message_box_error("Failed to start ssh", &err.to_string());
 	}
 }
 
@@ -304,4 +297,23 @@ pub fn local_app_data() -> io::Result<PathBuf> {
 	unsafe { CoTaskMemFree(path_ptr.cast::<winapi::ctypes::c_void>()) }
 
 	Ok(PathBuf::from(path))
+}
+
+pub fn message_box_error(title: &str, msg: &str) {
+	use winapi::um::winuser::{MessageBoxW, MB_ICONERROR};
+	unsafe {
+		MessageBoxW(
+			std::ptr::null_mut(),
+			msg.encode_utf16()
+				.chain("\0".encode_utf16())
+				.collect::<Vec<_>>()
+				.as_ptr(),
+			title
+				.encode_utf16()
+				.chain("\0".encode_utf16())
+				.collect::<Vec<_>>()
+				.as_ptr(),
+			MB_ICONERROR,
+		);
+	}
 }
