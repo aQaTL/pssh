@@ -5,5 +5,5 @@
 	- [x] Being able to customize selected entry's ssh args
 	- [ ] Being able to do custom action on entry select
 	- [ ] Get rid of having to type out function signatures in plugin code
-- [ ] Move to a workspace
+- [x] Move to a workspace
 - [ ] Write a build script. Use powershell or something like a rusty Makefile

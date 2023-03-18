@@ -6,9 +6,9 @@ version = 3
 name = "custom-ssh-args"
 version = "0.1.0"
 dependencies = [
- "plugin-models",
+ "pssh-models",
 ]
 
 [[package]]
-name = "plugin-models"
+name = "pssh-models"
 version = "0.1.0"

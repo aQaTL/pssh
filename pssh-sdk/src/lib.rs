@@ -1,6 +1,6 @@
 use std::{collections::HashMap, ffi::CStr};
 
-pub use plugin_models;
+pub use pssh_models;
 
 #[derive(Default, Debug, PartialEq, Eq)]
 pub struct SshConfig {
@@ -20,7 +20,7 @@ pub struct Host {
 type OptionsMap = HashMap<String, String>;
 
 impl Host {
-	unsafe fn from_c(host: *const plugin_models::Host) -> Self {
+	unsafe fn from_c(host: *const pssh_models::Host) -> Self {
 		let host = &*host;
 		let name = CStr::from_ptr(host.name).to_str().unwrap().to_string();
 		let host_name = if host.host_name.is_null() {
@@ -44,20 +44,20 @@ impl Host {
 }
 
 #[no_mangle]
-extern "C" fn add_host(list: *mut plugin_models::SshConfig, host: *const plugin_models::Host) {
+extern "C" fn add_host(list: *mut pssh_models::SshConfig, host: *const pssh_models::Host) {
 	let ssh_config = unsafe { &mut *list.cast::<SshConfig>() };
 	let host = unsafe { Host::from_c(host) };
 	ssh_config.hosts.push(host);
 }
 
 #[no_mangle]
-extern "C" fn create_settings_list() -> *mut plugin_models::OptionsMap {
+extern "C" fn create_settings_list() -> *mut pssh_models::OptionsMap {
 	let options_map: Box<OptionsMap> = Box::new(HashMap::new());
 	Box::into_raw(options_map).cast()
 }
 
 #[no_mangle]
-unsafe extern "C" fn free_settings_list(options_map: *mut plugin_models::OptionsMap) {
+unsafe extern "C" fn free_settings_list(options_map: *mut pssh_models::OptionsMap) {
 	let _ = Box::from_raw(options_map.cast::<OptionsMap>());
 }
 
@@ -67,17 +67,17 @@ pub struct List {
 }
 
 #[no_mangle]
-extern "C" fn list_create() -> *mut plugin_models::List {
+extern "C" fn list_create() -> *mut pssh_models::List {
 	Box::into_raw(Box::new(List::default())).cast()
 }
 
 #[no_mangle]
-unsafe extern "C" fn list_free(l: *mut plugin_models::List) {
+unsafe extern "C" fn list_free(l: *mut pssh_models::List) {
 	let _ = Box::from_raw(l.cast::<List>());
 }
 
 #[no_mangle]
-unsafe extern "C" fn list_push(l: *mut plugin_models::List, entry: plugin_models::ListEntry) {
+unsafe extern "C" fn list_push(l: *mut pssh_models::List, entry: pssh_models::ListEntry) {
 	let mut v = Vec::with_capacity(entry.len);
 	std::ptr::copy_nonoverlapping(entry.data.cast::<u8>(), v.as_mut_ptr(), entry.len);
 	v.set_len(entry.len);

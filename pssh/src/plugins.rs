@@ -30,10 +30,9 @@ pub struct Plugin {
 	ssh_args_fn: SshArgsFn,
 }
 
-type InspectConfigFn = extern "C" fn(list: *mut plugin_sdk::SshConfig);
-type SshArgsFn = extern "C" fn(
-	host: *const plugin_sdk::plugin_models::Host,
-) -> *mut plugin_sdk::plugin_models::List;
+type InspectConfigFn = extern "C" fn(list: *mut pssh_sdk::SshConfig);
+type SshArgsFn =
+	extern "C" fn(host: *const pssh_sdk::pssh_models::Host) -> *mut pssh_sdk::pssh_models::List;
 
 impl Drop for Plugin {
 	fn drop(&mut self) {
@@ -92,7 +91,7 @@ impl Plugin {
 
 	pub fn call_inspect_config(&self, ssh_config: &mut ssh_config_parser::SshConfig) {
 		let ssh_config: *mut ssh_config_parser::SshConfig = ssh_config;
-		let ssh_config: *mut plugin_sdk::SshConfig = ssh_config.cast();
+		let ssh_config: *mut pssh_sdk::SshConfig = ssh_config.cast();
 		(self.inspect_config_fn)(ssh_config);
 	}
 
@@ -103,7 +102,7 @@ impl Plugin {
 			.as_ref()
 			.map(|host_name| format!("{}\0", host_name));
 		let user = host.user.as_ref().map(|user| format!("{}\0", user));
-		let host = plugin_sdk::plugin_models::Host {
+		let host = pssh_sdk::pssh_models::Host {
 			name: name.as_ptr().cast(),
 			host_name: host_name
 				.as_ref()
@@ -116,13 +115,13 @@ impl Plugin {
 				.unwrap_or(std::ptr::null())
 				.cast(),
 			other: ((&host.other) as *const std::collections::HashMap<_, _>)
-				.cast::<plugin_sdk::plugin_models::OptionsMap>(),
+				.cast::<pssh_sdk::pssh_models::OptionsMap>(),
 		};
 		let list = (self.ssh_args_fn)(&host);
 		if list.is_null() {
 			return None;
 		}
-		let list = unsafe { Box::from_raw(list.cast::<plugin_sdk::List>()) };
+		let list = unsafe { Box::from_raw(list.cast::<pssh_sdk::List>()) };
 		Some(
 			list.v
 				.into_iter()
