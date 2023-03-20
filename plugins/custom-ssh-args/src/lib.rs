@@ -15,12 +15,12 @@ extern "C" {
 extern "C" fn inspect_config(_list: *mut pssh_models::SshConfig) {}
 
 #[no_mangle]
-unsafe extern "C" fn ssh_args(host: *const pssh_models::Host) -> *mut pssh_models::List {
+unsafe extern "C" fn on_item_select(host: *const pssh_models::Host) -> *mut pssh_models::List {
 	let host = &*host;
 	let name = CStr::from_ptr(host.name).to_bytes();
 
 	if name == b"Additional" {
-		let args: [&[u8]; 2] = [b"cat\0", b"/etc/os-release\0"];
+		let args: [&[u8]; 3] = [b"ssh\0", b"cat\0", b"/etc/os-release\0"];
 
 		let list = list_create();
 

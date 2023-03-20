@@ -30,7 +30,7 @@ impl Config {
 			}
 		};
 
-		let file = match std::fs::read_to_string(&path) {
+		let file = match std::fs::read_to_string(path) {
 			Ok(v) => v,
 			Err(err) if err.kind() == io::ErrorKind::NotFound => {
 				eprintln!("Using default config");

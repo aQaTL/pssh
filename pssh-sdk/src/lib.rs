@@ -52,7 +52,7 @@ extern "C" fn add_host(list: *mut pssh_models::SshConfig, host: *const pssh_mode
 
 #[no_mangle]
 extern "C" fn create_settings_list() -> *mut pssh_models::OptionsMap {
-	let options_map: Box<OptionsMap> = Box::new(HashMap::new());
+	let options_map: Box<OptionsMap> = Box::default();
 	Box::into_raw(options_map).cast()
 }
 
@@ -68,7 +68,7 @@ pub struct List {
 
 #[no_mangle]
 extern "C" fn list_create() -> *mut pssh_models::List {
-	Box::into_raw(Box::new(List::default())).cast()
+	Box::into_raw(Box::<List>::default()).cast()
 }
 
 #[no_mangle]

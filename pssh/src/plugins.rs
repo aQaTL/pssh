@@ -27,11 +27,11 @@ use winapi::shared::minwindef::HMODULE;
 pub struct Plugin {
 	handle: HMODULE,
 	inspect_config_fn: InspectConfigFn,
-	ssh_args_fn: SshArgsFn,
+	on_item_select_fn: OnItemSelectFn,
 }
 
 type InspectConfigFn = extern "C" fn(list: *mut pssh_sdk::SshConfig);
-type SshArgsFn =
+type OnItemSelectFn =
 	extern "C" fn(host: *const pssh_sdk::pssh_models::Host) -> *mut pssh_sdk::pssh_models::List;
 
 impl Drop for Plugin {
@@ -76,16 +76,17 @@ impl Plugin {
 		}
 		let inspect_config_fn: InspectConfigFn = unsafe { std::mem::transmute(inspect_config_fn) };
 
-		let ssh_args_fn = unsafe { GetProcAddress(handle, b"ssh_args\0".as_ptr().cast::<i8>()) };
+		let ssh_args_fn =
+			unsafe { GetProcAddress(handle, b"on_item_select\0".as_ptr().cast::<i8>()) };
 		if ssh_args_fn.is_null() {
 			return Err(LoadError::LoadSshArgsFn(std::io::Error::last_os_error()));
 		}
-		let ssh_args_fn: SshArgsFn = unsafe { std::mem::transmute(ssh_args_fn) };
+		let on_item_select_fn: OnItemSelectFn = unsafe { std::mem::transmute(ssh_args_fn) };
 
 		Ok(Plugin {
 			handle,
 			inspect_config_fn,
-			ssh_args_fn,
+			on_item_select_fn,
 		})
 	}
 
@@ -95,7 +96,7 @@ impl Plugin {
 		(self.inspect_config_fn)(ssh_config);
 	}
 
-	pub fn call_ssh_args(&self, host: &ssh_config_parser::Host) -> Option<Vec<String>> {
+	pub fn call_on_item_select(&self, host: &ssh_config_parser::Host) -> Option<Vec<String>> {
 		let name = format!("{}\0", host.name);
 		let host_name = host
 			.host_name
@@ -117,7 +118,7 @@ impl Plugin {
 			other: ((&host.other) as *const std::collections::HashMap<_, _>)
 				.cast::<pssh_sdk::pssh_models::OptionsMap>(),
 		};
-		let list = (self.ssh_args_fn)(&host);
+		let list = (self.on_item_select_fn)(&host);
 		if list.is_null() {
 			return None;
 		}

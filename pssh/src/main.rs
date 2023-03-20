@@ -11,7 +11,7 @@ use nwg::NativeUi;
 
 use config::Config;
 use plugins::Plugin;
-use ssh_config_parser::{Host, SshConfig};
+use ssh_config_parser::SshConfig;
 
 mod config;
 mod plugins;
@@ -41,25 +41,14 @@ fn main() {
 	nwg::dispatch_thread_events();
 }
 
-//TODO(aqatl): pass [Host], not just a name here
-fn open_ssh_session(config: &Config, plugins: &[Plugin], hosts: &[Host], name: &str) {
-	let mut custom_args = String::from("");
-	let host = hosts.iter().find(|h| h.name == name).unwrap();
-	for plugin in plugins {
-		if let Some(args) = plugin.call_ssh_args(host) {
-			let args = args.join(" ");
-			custom_args = format!(" {args}");
-		}
-	}
-
-	let ssh_command = format!("ssh {name}{custom_args}");
+fn open_command(config: &Config, command: &str) {
 	if cfg!(debug_assertions) {
-		println!("ssh command: {ssh_command}");
+		println!("Command: {command}");
 	}
 
 	let result = std::process::Command::new(&config.launcher_cmd[0])
 		.args(&config.launcher_cmd[1..])
-		.arg(ssh_command)
+		.arg(command)
 		.spawn();
 
 	if let Err(err) = result {
@@ -115,24 +104,30 @@ impl App {
 			self.quit();
 			return;
 		};
-		let item = &self.ssh_config.hosts[selected_index];
-		println!("Selected index {selected_index}: {item:#?}");
+		let host = &self.ssh_config.hosts[selected_index];
+		println!("Selected index {selected_index}: {host:#?}");
 
-		open_ssh_session(
-			&self.config,
-			&self.plugins,
-			&self.ssh_config.hosts,
-			&item.name,
-		);
+		let mut custom_command = None;
+		for plugin in &self.plugins {
+			custom_command = plugin.call_on_item_select(host).map(|cmd| cmd.join(" "));
+		}
+
+		let ssh_command = match custom_command {
+			Some(custom_command) => custom_command,
+			None => format!("ssh {}", host.name),
+		};
+
+		open_command(&self.config, &ssh_command);
 
 		self.quit();
 	}
 
 	fn open_from_custom_ip_input(&self) {
 		let ip = self.ip_input.text();
-		println!("Opening from custom ip input: {ip}");
 
-		open_ssh_session(&self.config, &self.plugins, &self.ssh_config.hosts, &ip);
+		let command = format!("ssh {ip}");
+		println!("Opening from custom ip input: {command}");
+		open_command(&self.config, &command);
 
 		self.quit();
 	}
@@ -216,16 +211,16 @@ impl nwg::NativeUi<AppUi> for App {
 			}
 
 			match event {
-				Event::OnButtonClick if &handle == &app.from_clipboard_button => {
+				Event::OnButtonClick if handle == app.from_clipboard_button => {
 					app.paste_from_clipboard();
 				}
-				Event::OnListBoxDoubleClick if &handle == &app.sessions_list_box => {
+				Event::OnListBoxDoubleClick if handle == app.sessions_list_box => {
 					app.on_enter();
 				}
-				Event::OnButtonClick if &handle == &app.ok_button => {
+				Event::OnButtonClick if handle == app.ok_button => {
 					app.on_ok_button();
 				}
-				Event::OnWindowClose if &handle == &app.window => {
+				Event::OnWindowClose if handle == app.window => {
 					app.quit();
 				}
 				_ => (),

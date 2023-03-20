@@ -23,6 +23,6 @@ extern "C" fn inspect_config(list: *mut pssh_models::SshConfig) {
 }
 
 #[no_mangle]
-unsafe extern "C" fn ssh_args(_host: *const pssh_models::Host) -> *mut pssh_models::List {
+unsafe extern "C" fn on_item_select(_host: *const pssh_models::Host) -> *mut pssh_models::List {
 	std::ptr::null_mut()
 }
