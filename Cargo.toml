@@ -9,6 +9,7 @@ members = [
 exclude = [
 	"plugins/add_entry",
 	"plugins/custom-ssh-args",
+	"plugins/print-hosts",
 ]
 
 [profile.release]

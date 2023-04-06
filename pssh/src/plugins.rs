@@ -1,6 +1,7 @@
 use std::{ffi::CString, os::windows::prelude::OsStrExt, path::Path};
 
-use crate::{config::Config, message_box_error, ssh_config_parser};
+use crate::{config::Config, message_box_error};
+use pssh_sdk::{Host, SshConfig};
 
 pub fn load_plugins(config: &Config) -> Vec<Plugin> {
 	let mut plugins = Vec::with_capacity(config.plugins.len());
@@ -90,33 +91,31 @@ impl Plugin {
 		})
 	}
 
-	pub fn call_inspect_config(&self, ssh_config: &mut ssh_config_parser::SshConfig) {
-		let ssh_config: *mut ssh_config_parser::SshConfig = ssh_config;
-		let ssh_config: *mut pssh_sdk::SshConfig = ssh_config.cast();
+	pub fn call_inspect_config(&self, ssh_config: &mut SshConfig) {
+		let ssh_config: *mut SshConfig = ssh_config;
 		(self.inspect_config_fn)(ssh_config);
 	}
 
-	pub fn call_on_item_select(&self, host: &ssh_config_parser::Host) -> Option<Vec<String>> {
-		let name = format!("{}\0", host.name);
-		let host_name = host
-			.host_name
-			.as_ref()
-			.map(|host_name| format!("{}\0", host_name));
-		let user = host.user.as_ref().map(|user| format!("{}\0", user));
+	pub fn call_on_item_select(&self, host: &Host) -> Option<Vec<String>> {
 		let host = pssh_sdk::pssh_models::Host {
-			name: name.as_ptr().cast(),
-			host_name: host_name
+			name: host.name.as_ptr().cast(),
+			name_len: host.name.len(),
+
+			host_name: host
+				.host_name
 				.as_ref()
-				.map(|x| x.as_ptr())
-				.unwrap_or(std::ptr::null())
-				.cast(),
-			user: user
+				.map(|s| s.as_ptr().cast())
+				.unwrap_or(std::ptr::null()),
+			host_name_len: host.host_name.as_ref().map(|s| s.len()).unwrap_or_default(),
+
+			user: host
+				.user
 				.as_ref()
-				.map(|x| x.as_ptr())
-				.unwrap_or(std::ptr::null())
-				.cast(),
-			other: ((&host.other) as *const std::collections::HashMap<_, _>)
-				.cast::<pssh_sdk::pssh_models::OptionsMap>(),
+				.map(|s| s.as_ptr().cast())
+				.unwrap_or(std::ptr::null()),
+			user_len: host.user.as_ref().map(|s| s.len()).unwrap_or_default(),
+
+			other: &host.other as *const _ as *const pssh_sdk::pssh_models::OptionsMap,
 		};
 		let list = (self.on_item_select_fn)(&host);
 		if list.is_null() {

@@ -44,10 +44,60 @@ impl Host {
 }
 
 #[no_mangle]
-extern "C" fn add_host(list: *mut pssh_models::SshConfig, host: *const pssh_models::Host) {
-	let ssh_config = unsafe { &mut *list.cast::<SshConfig>() };
+extern "C" fn config_add_host(config: *mut pssh_models::SshConfig, host: *const pssh_models::Host) {
+	let ssh_config = unsafe { &mut *config.cast::<SshConfig>() };
 	let host = unsafe { Host::from_c(host) };
 	ssh_config.hosts.push(host);
+}
+
+#[no_mangle]
+extern "C" fn config_remove_host(config: *mut pssh_models::SshConfig, idx: usize) -> bool {
+	let ssh_config: &mut SshConfig = unsafe { &mut *config.cast::<SshConfig>() };
+	if ssh_config.hosts.get(idx).is_none() {
+		return false;
+	}
+	ssh_config.hosts.remove(idx);
+	true
+}
+
+#[no_mangle]
+extern "C" fn config_hosts_len(config: *mut pssh_models::SshConfig) -> usize {
+	let ssh_config: &mut SshConfig = unsafe { &mut *config.cast::<SshConfig>() };
+	ssh_config.hosts.len()
+}
+
+#[no_mangle]
+extern "C" fn config_get_host(
+	config: *mut pssh_models::SshConfig,
+	idx: usize,
+	out_host: *mut pssh_models::Host,
+) -> bool {
+	let ssh_config: &mut SshConfig = unsafe { &mut *config.cast::<SshConfig>() };
+	let Some(host) = ssh_config.hosts.get(idx) else {
+        return false;
+    };
+
+	unsafe {
+		*out_host = pssh_models::Host {
+			name: host.name.as_ptr().cast(),
+			name_len: host.name.len(),
+			host_name: host
+				.host_name
+				.as_ref()
+				.map(|s| s.as_ptr().cast())
+				.unwrap_or(std::ptr::null()),
+			host_name_len: host.host_name.as_ref().map(|s| s.len()).unwrap_or_default(),
+			user: host
+				.user
+				.as_ref()
+				.map(|s| s.as_ptr().cast())
+				.unwrap_or(std::ptr::null()),
+			user_len: host.user.as_ref().map(|s| s.len()).unwrap_or_default(),
+			other: &host.other as *const _ as *const pssh_models::OptionsMap,
+		};
+	}
+
+	true
 }
 
 #[no_mangle]

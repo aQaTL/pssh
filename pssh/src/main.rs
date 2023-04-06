@@ -11,7 +11,7 @@ use nwg::NativeUi;
 
 use config::Config;
 use plugins::Plugin;
-use ssh_config_parser::SshConfig;
+use pssh_sdk::SshConfig;
 
 mod config;
 mod plugins;

@@ -8,20 +8,7 @@ use nom::multi::many0;
 use nom::sequence::{delimited, preceded, separated_pair, tuple};
 use nom::IResult;
 
-#[derive(Default, Debug, PartialEq, Eq)]
-pub struct SshConfig {
-	pub global_options: HashMap<String, String>,
-	pub hosts: Vec<Host>,
-}
-
-#[derive(Default, Debug, PartialEq, Eq)]
-pub struct Host {
-	pub name: String,
-
-	pub host_name: Option<String>,
-	pub user: Option<String>,
-	pub other: HashMap<String, String>,
-}
+use pssh_sdk::{Host, SshConfig};
 
 pub fn parse(input: &str) -> Result<SshConfig, nom::Err<nom::error::Error<String>>> {
 	enum Variant {
