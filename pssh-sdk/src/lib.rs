@@ -44,14 +44,14 @@ impl Host {
 }
 
 #[no_mangle]
-extern "C" fn config_add_host(config: *mut pssh_models::SshConfig, host: *const pssh_models::Host) {
-	let ssh_config = unsafe { &mut *config.cast::<SshConfig>() };
-	let host = unsafe { Host::from_c(host) };
+pub unsafe extern "C" fn config_add_host(config: *mut pssh_models::SshConfig, host: *const pssh_models::Host) {
+	let ssh_config = &mut *config.cast::<SshConfig>();
+	let host = Host::from_c(host);
 	ssh_config.hosts.push(host);
 }
 
 #[no_mangle]
-extern "C" fn config_remove_host(config: *mut pssh_models::SshConfig, idx: usize) -> bool {
+pub extern "C" fn config_remove_host(config: *mut pssh_models::SshConfig, idx: usize) -> bool {
 	let ssh_config: &mut SshConfig = unsafe { &mut *config.cast::<SshConfig>() };
 	if ssh_config.hosts.get(idx).is_none() {
 		return false;
@@ -61,13 +61,13 @@ extern "C" fn config_remove_host(config: *mut pssh_models::SshConfig, idx: usize
 }
 
 #[no_mangle]
-extern "C" fn config_hosts_len(config: *mut pssh_models::SshConfig) -> usize {
+pub extern "C" fn config_hosts_len(config: *mut pssh_models::SshConfig) -> usize {
 	let ssh_config: &mut SshConfig = unsafe { &mut *config.cast::<SshConfig>() };
 	ssh_config.hosts.len()
 }
 
 #[no_mangle]
-extern "C" fn config_get_host(
+pub unsafe extern "C" fn config_get_host(
 	config: *mut pssh_models::SshConfig,
 	idx: usize,
 	out_host: *mut pssh_models::Host,
@@ -77,37 +77,35 @@ extern "C" fn config_get_host(
         return false;
     };
 
-	unsafe {
-		*out_host = pssh_models::Host {
-			name: host.name.as_ptr().cast(),
-			name_len: host.name.len(),
-			host_name: host
-				.host_name
-				.as_ref()
-				.map(|s| s.as_ptr().cast())
-				.unwrap_or(std::ptr::null()),
-			host_name_len: host.host_name.as_ref().map(|s| s.len()).unwrap_or_default(),
-			user: host
-				.user
-				.as_ref()
-				.map(|s| s.as_ptr().cast())
-				.unwrap_or(std::ptr::null()),
-			user_len: host.user.as_ref().map(|s| s.len()).unwrap_or_default(),
-			other: &host.other as *const _ as *const pssh_models::OptionsMap,
-		};
-	}
+    *out_host = pssh_models::Host {
+        name: host.name.as_ptr().cast(),
+        name_len: host.name.len(),
+        host_name: host
+            .host_name
+            .as_ref()
+            .map(|s| s.as_ptr().cast())
+            .unwrap_or(std::ptr::null()),
+        host_name_len: host.host_name.as_ref().map(|s| s.len()).unwrap_or_default(),
+        user: host
+            .user
+            .as_ref()
+            .map(|s| s.as_ptr().cast())
+            .unwrap_or(std::ptr::null()),
+        user_len: host.user.as_ref().map(|s| s.len()).unwrap_or_default(),
+        other: &host.other as *const _ as *const pssh_models::OptionsMap,
+    };
 
 	true
 }
 
 #[no_mangle]
-extern "C" fn create_settings_list() -> *mut pssh_models::OptionsMap {
+pub extern "C" fn create_settings_list() -> *mut pssh_models::OptionsMap {
 	let options_map: Box<OptionsMap> = Box::default();
 	Box::into_raw(options_map).cast()
 }
 
 #[no_mangle]
-unsafe extern "C" fn free_settings_list(options_map: *mut pssh_models::OptionsMap) {
+pub unsafe extern "C" fn free_settings_list(options_map: *mut pssh_models::OptionsMap) {
 	let _ = Box::from_raw(options_map.cast::<OptionsMap>());
 }
 
@@ -117,17 +115,17 @@ pub struct List {
 }
 
 #[no_mangle]
-extern "C" fn list_create() -> *mut pssh_models::List {
+pub extern "C" fn list_create() -> *mut pssh_models::List {
 	Box::into_raw(Box::<List>::default()).cast()
 }
 
 #[no_mangle]
-unsafe extern "C" fn list_free(l: *mut pssh_models::List) {
+pub unsafe extern "C" fn list_free(l: *mut pssh_models::List) {
 	let _ = Box::from_raw(l.cast::<List>());
 }
 
 #[no_mangle]
-unsafe extern "C" fn list_push(l: *mut pssh_models::List, entry: pssh_models::ListEntry) {
+pub unsafe extern "C" fn list_push(l: *mut pssh_models::List, entry: pssh_models::ListEntry) {
 	let mut v = Vec::with_capacity(entry.len);
 	std::ptr::copy_nonoverlapping(entry.data.cast::<u8>(), v.as_mut_ptr(), entry.len);
 	v.set_len(entry.len);
