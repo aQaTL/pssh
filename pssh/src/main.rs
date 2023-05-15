@@ -173,10 +173,18 @@ impl nwg::NativeUi<AppUi> for App {
 			.build(&mut data.sessions_list_box)?;
 
 		// Ip input
-		nwg::TextInput::builder()
+		let mut ip_input_builder = nwg::TextInput::builder()
 			.size((180, 30))
 			.position((10, 220))
-			.placeholder_text(Some("Custom address"))
+			.placeholder_text(Some("Custom address"));
+
+		let text;
+		if let Some(clipboard_text) = nwg::Clipboard::data_text(&data.window) {
+			text = clipboard_text;
+			ip_input_builder = ip_input_builder.text(&text);
+		}
+
+		ip_input_builder
 			.parent(&mut data.window)
 			.build(&mut data.ip_input)?;
 

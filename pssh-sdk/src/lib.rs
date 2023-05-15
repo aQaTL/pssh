@@ -44,7 +44,10 @@ impl Host {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn config_add_host(config: *mut pssh_models::SshConfig, host: *const pssh_models::Host) {
+pub unsafe extern "C" fn config_add_host(
+	config: *mut pssh_models::SshConfig,
+	host: *const pssh_models::Host,
+) {
 	let ssh_config = &mut *config.cast::<SshConfig>();
 	let host = Host::from_c(host);
 	ssh_config.hosts.push(host);
@@ -77,23 +80,23 @@ pub unsafe extern "C" fn config_get_host(
         return false;
     };
 
-    *out_host = pssh_models::Host {
-        name: host.name.as_ptr().cast(),
-        name_len: host.name.len(),
-        host_name: host
-            .host_name
-            .as_ref()
-            .map(|s| s.as_ptr().cast())
-            .unwrap_or(std::ptr::null()),
-        host_name_len: host.host_name.as_ref().map(|s| s.len()).unwrap_or_default(),
-        user: host
-            .user
-            .as_ref()
-            .map(|s| s.as_ptr().cast())
-            .unwrap_or(std::ptr::null()),
-        user_len: host.user.as_ref().map(|s| s.len()).unwrap_or_default(),
-        other: &host.other as *const _ as *const pssh_models::OptionsMap,
-    };
+	*out_host = pssh_models::Host {
+		name: host.name.as_ptr().cast(),
+		name_len: host.name.len(),
+		host_name: host
+			.host_name
+			.as_ref()
+			.map(|s| s.as_ptr().cast())
+			.unwrap_or(std::ptr::null()),
+		host_name_len: host.host_name.as_ref().map(|s| s.len()).unwrap_or_default(),
+		user: host
+			.user
+			.as_ref()
+			.map(|s| s.as_ptr().cast())
+			.unwrap_or(std::ptr::null()),
+		user_len: host.user.as_ref().map(|s| s.len()).unwrap_or_default(),
+		other: &host.other as *const _ as *const pssh_models::OptionsMap,
+	};
 
 	true
 }
